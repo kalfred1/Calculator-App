@@ -1,27 +1,74 @@
 package com.example.kenrickalfred.calculatorapp;
 
 import android.graphics.Color;
+import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Cache;
+import com.android.volley.Network;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.BasicNetwork;
+import com.android.volley.toolbox.DiskBasedCache;
+import com.android.volley.toolbox.HurlStack;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.kenrickalfred.calculatorapp.R;
 
+import static android.R.attr.contextClickable;
+import static android.R.attr.contextDescription;
 import static android.R.attr.id;
+import static android.R.attr.queryActionMsg;
+import static android.R.attr.tag;
 
 
 public class MainActivity extends AppCompatActivity {
 
+    TextToSpeech tts;
     //Add = 1. Subtract = 2, multiply = 3, divide = 4
     int operation = -1;
+
+    // Instantiate the cache
+    Cache cache; // 1MB cap
+    // Set up the network to use HttpURLConnection as the HTTP client.
+    Network network;
+    // Instantiate the RequestQueue with the cache and network.
+    RequestQueue queue;
+    String url = "http://numbersapi.com/";
+
+    private void initQ() {
+        cache = new DiskBasedCache(getCacheDir(), 1024 * 1024); // 1MB cap
+        network = new BasicNetwork(new HurlStack());
+// Instantiate the RequestQueue with the cache and network.
+        queue = new RequestQueue(cache, network);
+        queue.start();
+        tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int i) {
+                Log.d("LOG", "Init status" + i);
+            }
+        });
+
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        initQ();
+
+
         setContentView(R.layout.activity_main);
+
 
         final View add = findViewById(R.id.plus);
         final View subtract = findViewById(R.id.minus);
@@ -160,6 +207,9 @@ public class MainActivity extends AppCompatActivity {
         value.setText(String.valueOf(result));
 
 
+        getnumbers(result);
+
+
     }
 
     public float add(float a, float b) {
@@ -176,5 +226,29 @@ public class MainActivity extends AppCompatActivity {
 
     public float multiply(float a, float b) {
         return a * b;
+
+    }
+
+
+    public void getnumbers(final float number) {
+
+        int numbervalue = (int) number;
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url + numbervalue,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Toast.makeText(MainActivity.this, "Guess the answer" + response, Toast.LENGTH_LONG);
+                        tts.speak(response, TextToSpeech.QUEUE_FLUSH, null);
+
+                        // Do something with the response
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        // Handle error
+                    }
+                });
+        queue.add(stringRequest);
     }
 }
